@@ -187,6 +187,13 @@ app.on("activate", () => {
   }
 });
 
+// Electron quits by default when the last window closes unless this event
+// has a listener. On macOS the owned Core belongs to the App session, so keep
+// it alive until the user quits and let activate recreate the window.
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
+});
+
 app.on("before-quit", async (event) => {
   if (quitting) return;
   event.preventDefault();

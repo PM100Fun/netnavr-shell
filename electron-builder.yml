@@ -2,7 +2,7 @@ appId: com.netnavr.shell
 productName: NetNavr Engineering
 artifactName: ${productName}-${version}-${arch}.${ext}
 extraMetadata:
-  version: 0.1.0-alpha.2
+  version: 0.1.0-alpha.3
 directories:
   output: release
   buildResources: build
