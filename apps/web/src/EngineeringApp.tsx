@@ -169,53 +169,67 @@ export function EngineeringApp() {
 
 function DesignReview({ flowId }: { flowId: string }) {
   const flow = DESIGN_FLOWS.find((item) => item.id === flowId)!;
-  const [index, setIndex] = useState(0);
+  const [stateId, setStateId] = useState(flow.states[0].id);
   const [draft, setDraft] = useState("请帮我整理明天需要做的事。\n这是一段可编辑的中文流程评审示例，尚未发送或保存。");
   const [taskTitle, setTaskTitle] = useState("整理出差安排");
   const [outbound, setOutbound] = useState(false);
   const [provider, setProvider] = useState("Codex");
-  const state = flow.states[index];
+  const state = flow.states.find((item) => item.id === stateId)!;
+  const selectState = (id: string) => {
+    setStateId(id);
+    // Direct state selection must display the same consent as the preview card.
+    setOutbound(id === "outbound");
+  };
+  const conversationBusy = stateId === "running" || stateId === "cancelling";
+  const taskEditable = stateId === "pending" || stateId === "editing";
+  const taskStatus: Record<string, string> = {
+    pending: "准备创建 · 尚未保存", editing: "参数已修改 · 需要重新确认",
+    executing: "正在等待提交回执（设计）", completed: "提交成功示例 · 未实际保存",
+    refused: "已拒绝 · 未保存", error: "提交失败或冲突 · 需要刷新",
+    offline: "服务离线 · 提交结果待查询", cancelled: "已取消 · 不撤销既有变更",
+    recovered: "恢复后查询原请求回执（设计）",
+  };
   return <>
     <div className="page-heading"><div><h1>{flow.title}流程评审</h1><p>{flow.summary}</p></div><span className="kind-badge design-badge">设计稿 · 未实现</span></div>
     <div className="design-warning" role="note">所有按钮仅切换设计状态。本页不会调用模型、保存任务或记忆、读取备份、修改用户数据。</div>
-    <div className="design-state-tabs" role="group" aria-label="设计状态">{flow.states.map((item, position) => <button key={item.name} aria-pressed={index === position} onClick={() => setIndex(position)}>{item.name}</button>)}</div>
-    <section className="engineering-card design-preview"><h2>{state.name}</h2><p>{state.text}</p>
+    <div className="design-state-tabs" role="group" aria-label="设计状态">{flow.states.map((item) => <button key={item.id} aria-pressed={stateId === item.id} onClick={() => selectState(item.id)}>{item.name}</button>)}</div>
+    <section className="engineering-card design-preview"><div aria-live="polite"><h2>{state.name}</h2><p>{state.text}</p></div>
       {flow.id === "UI-03" ? <>
         <div className="design-messages" aria-label="合成对话示例">
-          {index === 0 ? <p className="empty-design">没有真实会话。输入框可用于中文长文与换行评审。</p> : <>
+          {stateId === "empty" ? <p className="empty-design">没有真实会话。输入框可用于中文长文与换行评审。</p> : <>
             <article className="design-message user-message"><small>你 · 合成示例</small><p>请帮我整理明天需要做的事。</p></article>
-            <article className="design-message"><small>Navigator · 合成示例</small><p>{index === 1 ? "正在整理候选建议……（设计状态）" : index === 4 ? "模型连接已中断，原输入仍在。" : "建议先整理出差安排，保存任务前将展示确认卡。此文案为设计示例。"}</p></article>
+            <article className="design-message"><small>Navigator · 合成示例</small><p>{stateId === "completed" ? "建议先整理出差安排，保存任务前将展示确认卡。此文案为设计示例。" : state.text}</p></article>
           </>}
         </div>
         <label>中文输入与长文评审<textarea aria-label="设计稿输入，尚未发送" value={draft} maxLength={64000} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => {
           if (event.nativeEvent.isComposing || event.keyCode === 229) return;
-          if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); if (draft.trim()) setIndex(1); }
+          if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); if (draft.trim() && !conversationBusy) selectState("running"); }
         }} /></label>
-        <div className="design-controls"><span>Enter评审发送状态 · Shift+Enter换行</span><button onClick={() => setIndex(index === 1 ? 2 : 1)} disabled={!draft.trim()}>{index === 1 ? "停止" : "发送"} · 设计切换</button></div>
+        <div className="design-controls"><span>Enter评审发送状态 · Shift+Enter换行</span><button onClick={() => selectState(stateId === "running" ? "cancelling" : "running")} disabled={stateId === "cancelling" || (stateId !== "running" && !draft.trim())}>{stateId === "running" ? "停止" : stateId === "cancelling" ? "等待停止" : "发送"} · 设计切换</button></div>
       </> : null}
-      {flow.id === "UI-04" ? <div className="design-action-card">
-        <strong>准备创建 · 尚未保存</strong>
-        <label>标题<input value={taskTitle} onChange={(event) => { setTaskTitle(event.target.value); setIndex(1); }} maxLength={120} /></label>
+      {flow.id === "UI-04" ? stateId === "empty" ? <p className="empty-design">当前没有待确认的任务建议。</p> : <div className="design-action-card">
+        <strong>{taskStatus[stateId]}</strong>
+        <label>标题<input value={taskTitle} readOnly={!taskEditable} onChange={(event) => { setTaskTitle(event.target.value); selectState("editing"); }} maxLength={120} /></label>
         <dl><div><dt>日期</dt><dd>2026年10月2日（仅日期）</dd></div><div><dt>时区</dt><dd>Asia/Shanghai</dd></div><div><dt>参数变化</dt><dd>标题修改后重新确认</dd></div></dl>
-        <div className="engineering-actions"><button onClick={() => setIndex(4)}>拒绝 · 设计</button><button onClick={() => setIndex(1)}>修改 · 设计</button><button disabled={index === 2 || !taskTitle.trim()} onClick={() => setIndex(2)}>确认保存 · 设计</button></div>
+        {taskEditable ? <div className="engineering-actions"><button onClick={() => selectState("refused")}>拒绝 · 设计</button><button onClick={() => selectState("editing")}>修改 · 设计</button><button disabled={!taskTitle.trim()} onClick={() => selectState("executing")}>确认保存 · 设计</button><button onClick={() => selectState("cancelled")}>取消确认 · 设计</button></div> : null}
         <p className="scope-note">只展示结构化确认卡；Core的正式Tasks回执尚未实现。</p>
       </div> : null}
-      {flow.id === "UI-06" ? <div className="design-action-card">
-        <div className="design-memory-head"><strong>偏好中文回复</strong><span className="kind-badge">{index === 0 ? "候选" : index === 1 ? "已确认 · 仅本地（设计）" : "设计状态"}</span></div>
+      {flow.id === "UI-06" ? stateId === "empty" || stateId === "forgotten" ? <p className="empty-design">没有可供后续使用的记忆条目（设计示例）。</p> : <div className="design-action-card">
+        <div className="design-memory-head"><strong>偏好中文回复</strong><span className="kind-badge">{state.name}（设计）</span></div>
         <details><summary>查看来源与范围</summary><p>合成来源：2026年9月28日用户消息“请使用中文回复”；适用范围：表达偏好，不能扩大权限。</p></details>
-        <label>指定Provider<select value={provider} onChange={(event) => { setProvider(event.target.value); setOutbound(false); }}><option>Codex</option><option>Claude</option></select></label>
-        <label className="design-checkbox"><input type="checkbox" checked={outbound} onChange={(event) => setOutbound(event.target.checked)} />允许向{provider}发送此条记忆 · 设计授权</label>
-        <div className="engineering-actions"><button onClick={() => setIndex(1)}>确认仅本地 · 设计</button><button disabled={!outbound} onClick={() => setIndex(2)}>确认指定外发 · 设计</button><button onClick={() => setIndex(3)}>遗忘 · 设计</button></div>
+        <label>指定Provider<select value={provider} onChange={(event) => { setProvider(event.target.value); setOutbound(false); if (stateId === "outbound") setStateId("local"); }}><option>Codex</option><option>Claude</option></select></label>
+        <label className="design-checkbox"><input type="checkbox" checked={outbound} onChange={(event) => { setOutbound(event.target.checked); if (stateId === "outbound") setStateId("local"); }} />允许向{provider}发送此条记忆 · 设计授权</label>
+        <div className="engineering-actions"><button onClick={() => selectState("local")}>确认仅本地 · 设计</button><button disabled={!outbound} onClick={() => selectState("outbound")}>确认指定外发 · 设计</button><button onClick={() => selectState("forgotten")}>遗忘 · 设计</button><button onClick={() => selectState("refused")}>拒绝候选 · 设计</button></div>
         <p className="scope-note">取消勾选只改变本页设计状态；真实产品需终止或重建已携带敏感上下文的原生会话。</p>
       </div> : null}
-      {flow.id === "UI-08" ? <div className="design-action-card">
+      {flow.id === "UI-08" ? stateId === "empty" ? <p className="empty-design">没有选中的恢复包；原资料保持可用。</p> : <div className="design-action-card">
         <strong>合成恢复包预览 · 不是实际文件</strong>
-        <dl><div><dt>来源</dt><dd>synthetic-design-only.nnrb</dd></div><div><dt>Navigator</dt><dd>示例Navigator</dd></div><div><dt>内容</dt><dd>12任务 / 8记忆 / 3对话（合成展示）</dd></div><div><dt>原库</dt><dd>保留；尚未切换</dd></div></dl>
+        <dl><div><dt>来源</dt><dd>synthetic-design-only.nnrb</dd></div><div><dt>Navigator</dt><dd>示例Navigator</dd></div><div><dt>内容</dt><dd>12任务 / 8记忆 / 3对话（合成展示）</dd></div><div><dt>原库</dt><dd>{stateId === "completed" ? "保留；已切换为恢复资料（设计）" : "保留；尚未切换"}</dd></div></dl>
         <ol className="design-steps"><li>格式、口令、兼容预检</li><li>新目录隔离恢复与引用核验</li><li>用户显式选择切换</li><li>官方模型重新认证</li></ol>
-        <div className="engineering-actions"><button onClick={() => setIndex(1)}>开始预检 · 设计</button><button onClick={() => setIndex(2)}>查看隔离校验 · 设计</button><button onClick={() => setIndex(3)}>确认切换 · 设计</button><button onClick={() => setIndex(5)}>取消 · 设计</button></div>
+        <div className="engineering-actions">{stateId === "ready" ? <><button onClick={() => selectState("completed")}>确认切换 · 设计</button><button onClick={() => selectState("refused")}>拒绝切换 · 设计</button></> : null}{["preflight", "validating", "ready"].includes(stateId) ? <button onClick={() => selectState("cancelled")}>取消 · 设计</button> : null}</div>
         <p className="scope-note">本页没有读取文件、验证口令、恢复数据库或切换资料。</p>
       </div> : null}
-      <button onClick={() => setIndex((index + 1) % flow.states.length)}>{state.action} · 设计切换</button>
+      <button disabled={flow.id === "UI-04" && state.next === "executing" && !taskTitle.trim()} onClick={() => selectState(state.next)}>{state.action} · 设计切换</button>
     </section>
     <section className="engineering-card"><h2>Rex 评审点</h2><p>状态是否容易理解，关键确认与数据责任是否清楚，中文长文、窄窗口与浅深主题是否易读。人工结果记录于外部验收材料，AI不代勾选。</p></section>
   </>;
