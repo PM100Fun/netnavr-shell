@@ -35,7 +35,7 @@
     "@netnavr/core": "git+https://github.com/PM100Fun/netnavr-core.git#b45f796b9f01b85cd5d779b8510e5ea8c8889f15",
     "concurrently": "^10.0.4",
     "electron-builder": "^26.15.3",
-    "esbuild": "^0.28.1",
+    "esbuild": "^0.28.2",
     "typescript": "^7.0.2"
   },
   "engines": { "node": ">=24" },
