@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@openai/codex": "^0.146.0",
-    "@openai/codex-sdk": "^0.146.0"
+    "@openai/codex-sdk": "^0.157.0"
   },
   "devDependencies": {
     "@netnavr/core": "git+https://github.com/PM100Fun/netnavr-core.git#b45f796b9f01b85cd5d779b8510e5ea8c8889f15",

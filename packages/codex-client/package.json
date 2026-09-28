@@ -16,7 +16,7 @@
     "check": "tsc -p tsconfig.json --noEmit --rootDir ../.."
   },
   "dependencies": {
-    "@openai/codex-sdk": "^0.146.0",
+    "@openai/codex-sdk": "^0.157.0",
     "@netnavr/shell-model-router": "0.1.0",
     "@netnavr/shell-protocol": "0.1.0"
   }
