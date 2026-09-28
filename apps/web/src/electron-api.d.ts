@@ -2,6 +2,8 @@ import type { CoreStatusResult } from "../../desktop/src/core-status.js";
 import type { FixtureCommandInput, FixtureCommandResult } from "@netnavr/core/fixture-contract";
 import type { FixtureBridgeResult, FixtureReadout } from "../../desktop/src/fixture-bridge.js";
 
+import type { ProviderReadout } from "../../desktop/src/provider-bridge.js";
+
 export {};
 
 declare global {
@@ -12,6 +14,10 @@ declare global {
         sessionToken: string;
       }>;
       getCoreStatus(): Promise<CoreStatusResult>;
+      getProvider(): Promise<ProviderReadout>;
+      preflightProvider(): Promise<ProviderReadout>;
+      runProvider(marker: "alpha" | "beta"): Promise<ProviderReadout>;
+      cancelProvider(): Promise<ProviderReadout>;
       startFixture(): Promise<FixtureBridgeResult<FixtureReadout>>;
       stopFixture(): Promise<FixtureBridgeResult<FixtureReadout>>;
       getFixture(): Promise<FixtureBridgeResult<FixtureReadout>>;

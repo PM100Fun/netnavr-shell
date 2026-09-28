@@ -17,11 +17,15 @@ does not yet provide the complete Navigator, Tasks, Memory or recovery product.
   tests remain in the repository. Its coding server and SDK do not automatically
   start in the product 0.1 App or browser review.
 
-Official-tool probes report their own evidence. Real model runs are disabled
-until configuration inheritance, hooks/MCP, tool/file permissions and outbound
-context boundaries are verified. A mock, a marker command or a login-status check
-is not a real-provider conversation. Mac GUI, installation, upgrade, recovery,
-signing and user acceptance require separate actual-machine evidence.
+An opt-in synthetic Codex adapter supports macOS x64 with official CLI
+`0.158.0-alpha.2.1` and a separately authenticated, private test home. It verifies
+effective configuration and empty context, disables tools, bounds file/process
+access with a macOS sandbox, and allows TLS tunnels only to the official ChatGPT
+and authentication hosts. Only exact `alpha`/`beta` responses from the active
+thread/turn can become a Core marker command. Cancellation or a changed Core
+session discards the result. Unknown versions, platforms or policies fail closed.
+Mac GUI, installation, upgrade, recovery, signing and user acceptance still
+require separate actual-machine evidence.
 
 ## Quick start
 
@@ -50,6 +54,17 @@ real fixed Core and the actual bundled worker in temporary storage.
 utility process and restart readback without opening a window. This technical
 check does not constitute App installation or GUI acceptance.
 
+The synthetic adapter is disabled unless the trusted launcher explicitly sets
+`NETNAVR_SYNTHETIC_CODEX` (canonical official executable path),
+`NETNAVR_SYNTHETIC_HOME` (canonical dedicated directory, mode 0700, already signed
+in through the official ChatGPT flow), and `NETNAVR_SYNTHETIC_EVIDENCE` (existing
+canonical test output directory). Do not use your ordinary Codex home or copy
+credentials into the test home. The Renderer cannot change these settings.
+With those variables, `npm run provider:synthetic -- preflight` checks context
+without a model turn; `npm run provider:synthetic -- alpha` runs the fixed test.
+The desktop button additionally commits the validated result to its owned Core.
+Normal startup performs neither authentication checks nor model requests.
+
 ## Ownership and compatibility
 
 `apps/desktop` owns Electron, `apps/web` owns rendering, `apps/server` owns the
@@ -61,15 +76,15 @@ authorized App distribution; Core does not publish installers.
 
 | Identity | Value |
 | --- | --- |
-| Product / internal App target | 0.1 / 0.1.0-alpha.2 |
-| Shell component | 0.1.3 |
+| Product / internal App target | 0.1 / 0.1.0-alpha.5 |
+| Shell component | 0.1.6 |
 | Core component fixed by the pin | 0.2.3 |
 | Core commit | `c1c33130e5a5a6f807af094bc24a799dbde38d03` |
 | Core HTTP API / data schema | v1 / 1 |
 | Engineering fixture contract / schema | fixture-v1 / 1 (isolated, not product data) |
 | Shell WebSocket protocol | 3 |
 | Import baseline | NetNavr v0.2.33, `ca6002d580cef51cab869a3a65cbcddc2dfed3c1` |
-| Previous Shell component | 0.1.1 |
+| Previous Shell component | 0.1.5 |
 
 The exact Core source is recorded in `package.json` and `package-lock.json`.
 To update it, publish and verify Core first, change the explicit commit, regenerate
@@ -107,7 +122,8 @@ layouts; it does not import CodexMonitor's Tauri runtime or private platform API
 本仓保留旧总仓 v0.2.33 的有效回归。产品0.1通过T3最小桌面装配、受限桥、
 App归属Core进程与合成marker往返验证工程边界；四组流程页面明确标为设计稿。
 Core以完整公开提交固定，产品/App、组件、协议与Schema分别记录。官方工具的
-权限与配置继承边界未完成验证，当前工程App关闭真实模型运行。Mac实际安装、
+专用受限适配器仅在显式配置、已验证的 Mac Intel/CLI 版本上开放固定模型测试；
+普通启动保持关闭，不读取普通 Codex 上下文。Mac实际安装、
 升级恢复、签名公证与人工验收需要相应实机证据。Pay没有导入本仓。
 
 ## Community and license

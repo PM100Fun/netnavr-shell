@@ -223,3 +223,5 @@ export class ProviderProbe {
     });
   }
 }
+
+export { CodexSyntheticProvider } from "./codex-synthetic.mjs";

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { FixtureCommandInput, FixtureCommandResult } from "@netnavr/core/fixture-contract";
 import type { FixtureBridgeResult, FixtureReadout } from "../../desktop/src/fixture-bridge.js";
+import type { ProviderReadout } from "../../desktop/src/provider-bridge.js";
 import { DESIGN_FLOWS } from "./designFlows";
 
 export function EngineeringApp() {
+  const [provider, setProvider] = useState<ProviderReadout>({ state: "NOT_CONFIGURED", busy: false, modelRequest: false });
   const [page, setPage] = useState("engineering");
   const [readout, setReadout] = useState<FixtureReadout>({ state: "stopped" });
   const [result, setResult] = useState<FixtureCommandResult | null>(null);
@@ -34,6 +36,30 @@ export function EngineeringApp() {
     try { await work(); } catch { setError("桌面桥请求失败。请查看候选的技术验证记录并显式重试。"); }
     finally { busyRef.current = false; setBusy(false); }
   }
+  async function providerAction(mode: "preflight" | "run") {
+    if (!bridge) return;
+    const requestGeneration = generation.current;
+    setProvider({ state: "PREFLIGHT", busy: true, modelRequest: false });
+    const value = mode === "preflight" ? await bridge.preflightProvider() : await bridge.runProvider(marker);
+    setProvider(value);
+    if (requestGeneration !== generation.current) return;
+    if (value.core) { setResult(value.core); setReadout({ state: "online", fixture: value.core.state }); setLastInput(null); }
+  }
+  async function cancelProvider() {
+    if (!bridge) return;
+    try { setProvider(await bridge.cancelProvider()); } catch { setError("未确认模型取消，请重试或停止 Core。"); }
+  }
+  useEffect(() => {
+    if (!bridge) return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try { const value = await bridge.getProvider(); if (active) setProvider(value); }
+      catch { /* An explicit operation reports failures. */ }
+      if (active) timer = setTimeout(poll, 250);
+    };
+    void poll(); return () => { active = false; clearTimeout(timer); };
+  }, []);
   async function refresh() {
     if (!bridge) return;
     const requestGeneration = generation.current;
@@ -126,7 +152,7 @@ export function EngineeringApp() {
         <button aria-current={page === "engineering" ? "page" : undefined} onClick={() => setPage("engineering")}>工程往返</button>
         <p className="sidebar-caption">四组设计稿</p>
         {DESIGN_FLOWS.map((flow) => <button key={flow.id} aria-current={page === flow.id ? "page" : undefined} onClick={() => setPage(flow.id)}>{flow.title}<small>{flow.id}</small></button>)}
-        <div className="scope-note">设计稿展示未来流程。任务、记忆、对话持久化、恢复及真实模型运行尚未接入。</div>
+        <div className="scope-note">设计稿展示未来流程。任务、记忆、对话持久化和恢复尚未接入。模型工程测试仅允许固定合成标记。</div>
       </nav>
       <section className="engineering-content" ref={contentRef}>
         {page === "engineering" ? <>
@@ -136,7 +162,7 @@ export function EngineeringApp() {
             <div className="engineering-actions">
               <button onClick={() => void action(start)} disabled={!bridge || busy || online}>显式启动 Core</button>
               <button onClick={() => void action(refresh)} disabled={!bridge || busy}>读取实际状态</button>
-              <button onClick={() => void action(stop)} disabled={!bridge || busy || readout.state === "stopped"}>停止本App的 Core</button>
+              <button onClick={() => void (provider.busy ? stop() : action(stop))} disabled={!bridge || (busy && !provider.busy) || readout.state === "stopped"}>停止本App的 Core</button>
             </div>
             <p role="status">{!bridge ? "仅浏览器设计预览；没有桌面桥，不可执行工程命令。" : `当前状态：${readout.state}`}</p>
             <p className="scope-note">停止只处理本App创建的进程。关闭窗口保留当前会话；退出App停止该进程。重启保留隔离fixture标记与revision，命令账和session重新建立。</p>
@@ -148,8 +174,8 @@ export function EngineeringApp() {
               <label>测试延迟<select value={delayMs} onChange={(event) => setDelayMs(Number(event.target.value))}><option value="0">0 ms</option><option value="500">500 ms（观察取消）</option></select></label>
             </div>
             <div className="engineering-actions">
-              <button disabled={!online || busy || pending} onClick={() => void action(() => submit({ commandId: `cmd_${crypto.randomUUID()}`, operation: "set-marker", marker, delayMs, timeoutMs: 1000 }))}>提交固定命令</button>
-              <button disabled={!online || busy || !lastInput} onClick={() => lastInput && void action(() => submit(lastInput))}>重复同一请求</button>
+              <button disabled={!online || busy || provider.busy || pending} onClick={() => void action(() => submit({ commandId: `cmd_${crypto.randomUUID()}`, operation: "set-marker", marker, delayMs, timeoutMs: 1000 }))}>提交固定命令</button>
+              <button disabled={!online || busy || provider.busy || !lastInput} onClick={() => lastInput && void action(() => submit(lastInput))}>重复同一请求</button>
               <button disabled={!online || busy || !pending} onClick={() => void action(cancel)}>取消当前命令</button>
             </div>
             <p className="scope-note">重复请求返回同一回执；取消不撤销已完成变更。本探针不执行Tasks、Memory、任意文本或模型工具。</p>
@@ -160,7 +186,17 @@ export function EngineeringApp() {
             {error ? <p className="error-message" role="alert">{error}</p> : null}
           </section>
           <details className="engineering-card"><summary>工程来源与范围</summary><p>T3 Code固定快照 de251fc：桌面窗口/首次显示与自包含CJS构建策略的最小适配。Core HTTP v1、fixture-v1、数据Schema1。并未运行T3的编程领域数据库、远程服务或原工具权限。完整Mac工程、安装、升级、恢复及签名状态须以实机记录为准。</p></details>
-          <section className="engineering-card"><h2>官方模型：权限边界尚未验证</h2><p>现有工具配置、hooks/MCP及文件访问范围未证明符合本版边界。此候选关闭真实模型运行；Core标记往返和设计稿都不能代替实际模型响应。官方工具的版本/认证探针结果与真实运行单独记录。</p></section>
+          <section className="engineering-card"><h2>官方模型 · 固定标记测试</h2>
+            <p>使用专用官方登录，仅发送固定的 alpha 或 beta 测试指令。成功响应经过校验，再写入上方隔离 Core。</p>
+            <div className="engineering-actions">
+              <button disabled={!bridge || busy || provider.busy || provider.state === "NOT_CONFIGURED"} onClick={() => void action(() => providerAction("preflight"))}>检查专用模型环境</button>
+              <button disabled={!bridge || !online || busy || provider.busy || pending || provider.state === "NOT_CONFIGURED"} onClick={() => void action(() => providerAction("run"))}>通过模型设置标记</button>
+              <button disabled={!bridge || !provider.busy || provider.state === "COMMITTING"} onClick={() => void cancelProvider()}>取消模型请求</button>
+            </div>
+            <p role="status" data-testid="provider-state">模型状态：{provider.state}</p>
+            {provider.runId ? <code className="breakable">{provider.runId}</code> : null}
+            <p className="scope-note">NOT_CONFIGURED 表示此启动未配置专用测试环境。预检不调用模型；取消不撤销已经提交的 Core 变更。清理未确认时禁止后续运行。</p>
+          </section>
         </> : <DesignReview key={page} flowId={page} />}
       </section>
     </div>

@@ -1,6 +1,6 @@
 {
   "name": "netnavr-shell",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "A macOS-first interaction shell for the NetNavr local runtime.",
   "author": "The NetNavr Authors",
   "private": true,
@@ -29,7 +29,8 @@
     "candidate:prepare": "node scripts/prepare-candidate.mjs",
     "test:integration": "node --import=tsx --test test/*.test.ts",
     "test:electron-runtime": "npm run build -w @netnavr/shell-desktop && node scripts/verify-electron-runtime.mjs",
-    "verify": "npm test && npm run check && npm run build && npm run test:integration"
+    "verify": "npm test && npm run check && npm run build && npm run test:integration",
+    "provider:synthetic": "node scripts/provider-synthetic.mjs"
   },
   "dependencies": {
     "@openai/codex": "^0.146.0",
@@ -42,7 +43,9 @@
     "esbuild": "^0.28.1",
     "typescript": "^7.0.2"
   },
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "allowScripts": {
     "git+https://github.com/PM100Fun/netnavr-core.git#c1c33130e5a5a6f807af094bc24a799dbde38d03": true,
     "electron": true,
