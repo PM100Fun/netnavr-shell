@@ -1,19 +1,17 @@
-import { mkdir } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 
 import {
   app,
   BrowserWindow,
   ipcMain,
   Menu,
+  nativeTheme,
   shell,
   type IpcMainInvokeEvent,
 } from "electron";
-import { startAgentServer, type AgentServerHandle } from "@netnavr/shell-server";
 import {
   CORE_STATUS_CHANNEL,
-  fetchConfiguredCoreStatus,
   type CoreStatusResult,
 } from "./core-status.js";
 import {
@@ -21,46 +19,33 @@ import {
   SHELL_CONNECTION_CHANNEL,
   type ShellConnectionInfo,
 } from "./security.js";
+import { createDesktopWindowOptions, bindFirstReveal, getWindowTitleBarOptions } from "./window/DesktopWindow.js";
+import { FixtureOwner } from "./fixture-owner.js";
+import { createElectronCoreLauncher } from "./electron-core-launcher.js";
+import { FIXTURE_CHANNELS, parseFixtureInput, parseFixtureCommandId } from "./fixture-bridge.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const rendererPath = path.resolve(__dirname, "../../web/dist/index.html");
+const desktopDirectory = __dirname;
+const rendererPath = path.resolve(desktopDirectory, "../../web/dist/index.html");
 const rendererUrl = pathToFileURL(rendererPath).href;
 
 let mainWindow: BrowserWindow | null = null;
-let agentServer: AgentServerHandle | null = null;
+let quitting = false;
+const fixtureOwner = new FixtureOwner(createElectronCoreLauncher(
+  app.isPackaged
+    ? path.join(process.resourcesPath, "app.asar.unpacked", "apps", "desktop", "dist", "core-worker.cjs")
+    : path.join(desktopDirectory, "core-worker.cjs"),
+  () => path.join(app.getPath("userData"), "product-0.1-engineering", "fixture-v1"),
+));
 
 async function createWindow() {
-  if (!agentServer) {
-    const configuredWorkspace = process.env.NETNAVR_SHELL_WORKSPACE?.trim();
-    const workspaceRoot = configuredWorkspace
-      ? path.resolve(configuredWorkspace)
-      : path.join(app.getPath("userData"), "workspace");
-
-    await mkdir(workspaceRoot, { recursive: true, mode: 0o700 });
-    agentServer = await startAgentServer({
-      host: "127.0.0.1",
-      port: 0,
-      workspaceRoot
-    });
-  }
-
-  mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 820,
-    minWidth: 980,
-    minHeight: 680,
-    title: "NetNavr Shell",
-    backgroundColor: "#f6f7f5",
-    titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 16, y: 16 },
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      preload: path.join(__dirname, "preload.cjs"),
-      sandbox: true
-    }
-  });
+  mainWindow = new BrowserWindow(createDesktopWindowOptions({
+    platform: process.platform,
+    dark: nativeTheme.shouldUseDarkColors,
+    preload: path.join(desktopDirectory, "preload.cjs"),
+  }));
+  const window = mainWindow;
+  bindFirstReveal((fire) => window.once("ready-to-show", fire), window);
+  window.webContents.on("will-attach-webview", (event) => event.preventDefault());
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     openTrustedExternalUrl(url);
@@ -91,17 +76,10 @@ function openTrustedExternalUrl(url: string): void {
 
 function installDesktopBridges() {
   ipcMain.handle(SHELL_CONNECTION_CHANNEL, (event): ShellConnectionInfo => {
-    if (
-      !isTrustedRenderer(event) ||
-      !agentServer
-    ) {
-      throw new Error("Shell connection information is unavailable");
-    }
-
-    return {
-      webSocketUrl: agentServer.webSocketUrl,
-      sessionToken: agentServer.sessionToken
-    };
+    if (!isTrustedRenderer(event)) throw new Error("Shell connection information is unavailable");
+    // The legacy coding prototype is retained as source and tests. Product 0.1
+    // does not enable its SDK, server or config inheritance by opening a window.
+    throw new Error("Legacy agent server is not enabled in the product 0.1 candidate");
   });
 
   ipcMain.handle(CORE_STATUS_CHANNEL, async (event): Promise<CoreStatusResult> => {
@@ -109,8 +87,23 @@ function installDesktopBridges() {
       throw new Error("Core status is unavailable");
     }
 
-    return fetchConfiguredCoreStatus(process.env.NETNAVR_CORE_PORT);
+    return { state: "offline", code: "unreachable", message: "Use the explicit product 0.1 engineering Core controls" };
   });
+  for (const [action, channel] of Object.entries(FIXTURE_CHANNELS)) {
+    ipcMain.handle(channel, async (event, input: unknown) => {
+      if (!isTrustedRenderer(event)) throw new Error("Engineering bridge is unavailable");
+      if (["start", "stop", "state"].includes(action) && input !== undefined) throw new TypeError("Engineering operation takes no arguments");
+      switch (action) {
+        case "start": return fixtureOwner.start();
+        case "stop": return fixtureOwner.stop();
+        case "state": return fixtureOwner.state();
+        case "submit": return fixtureOwner.submit(parseFixtureInput(input));
+        case "read": return fixtureOwner.read(parseFixtureCommandId(input));
+        case "cancel": return fixtureOwner.cancel(parseFixtureCommandId(input));
+        default: throw new Error("Unknown engineering operation");
+      }
+    });
+  }
 }
 
 function isTrustedRenderer(event: IpcMainInvokeEvent): boolean {
@@ -118,6 +111,7 @@ function isTrustedRenderer(event: IpcMainInvokeEvent): boolean {
     mainWindow !== null &&
     !mainWindow.isDestroyed() &&
     event.sender === mainWindow.webContents &&
+    event.senderFrame === mainWindow.webContents.mainFrame &&
     event.senderFrame?.url === rendererUrl
   );
 }
@@ -174,12 +168,18 @@ function installMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-app.setName("NetNavr Shell");
+app.setName("NetNavr Engineering 0.1");
 
-await app.whenReady();
-installDesktopBridges();
-installMenu();
-await createWindow();
+async function bootstrap(): Promise<void> {
+  await app.whenReady();
+  installDesktopBridges();
+  installMenu();
+  await createWindow();
+}
+void bootstrap().catch(() => {
+  console.error("NetNavr engineering window could not start");
+  app.exit(1);
+});
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
@@ -188,13 +188,21 @@ app.on("activate", () => {
 });
 
 app.on("before-quit", async (event) => {
-  if (!agentServer) return;
-
+  if (quitting) return;
   event.preventDefault();
-  const server = agentServer;
-  agentServer = null;
-  await server.close().catch((error: unknown) => {
-    console.error("Failed to close agent server", error);
-  });
+  quitting = true;
+  const result = await fixtureOwner.stop();
+  if (!result.ok) {
+    quitting = false;
+    console.error("Owned engineering Core shutdown was not confirmed; App remains open");
+    return;
+  }
   app.quit();
+});
+
+nativeTheme.on("updated", () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.setBackgroundColor(nativeTheme.shouldUseDarkColors ? "#0a0a0a" : "#ffffff");
+  const { titleBarOverlay } = getWindowTitleBarOptions(nativeTheme.shouldUseDarkColors, process.platform);
+  if (typeof titleBarOverlay === "object") mainWindow.setTitleBarOverlay(titleBarOverlay);
 });

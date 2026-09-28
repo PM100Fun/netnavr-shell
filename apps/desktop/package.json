@@ -1,21 +1,21 @@
 {
   "name": "@netnavr/shell-desktop",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "type": "module",
-  "main": "./dist/main.js",
+  "main": "./dist/main.cjs",
   "scripts": {
     "build": "node ../../scripts/build-desktop-main.mjs",
     "check": "tsc -p tsconfig.json --noEmit --rootDir ../.. && tsc -p tsconfig.test.json",
-    "dev": "electron ./dist/main.js",
-    "start": "electron ./dist/main.js",
+    "dev": "electron ./dist/main.cjs",
+    "start": "electron ./dist/main.cjs",
     "test": "tsx --test test/**/*.test.ts"
   },
   "dependencies": {
     "@netnavr/shell-server": "0.1.0"
   },
   "devDependencies": {
-    "electron": "^43.3.0",
+    "electron": "43.3.0",
     "tsx": "^4.23.7"
   }
 }

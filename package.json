@@ -1,20 +1,20 @@
 {
   "name": "netnavr-shell",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A macOS-first interaction shell for the NetNavr local runtime.",
   "author": "The NetNavr Authors",
   "private": true,
   "type": "module",
-  "main": "apps/desktop/dist/main.js",
+  "main": "apps/desktop/dist/main.cjs",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build:packages && npm run build -w @netnavr/shell-server && npm run build -w @netnavr/shell-web && npm run build -w @netnavr/shell-desktop",
-    "build:packages": "npm run build -w @netnavr/shell-protocol && npm run build -w @netnavr/shell-model-router && npm run build -w @netnavr/shell-codex-client",
+    "build": "npm run build:packages && npm run build -w @netnavr/shell-server && npm run build -w @netnavr/shell-web && npm run build -w @netnavr/shell-desktop && node scripts/stage-candidate-licenses.mjs",
+    "build:packages": "npm run build -w @netnavr/shell-protocol && npm run build -w @netnavr/shell-model-router && npm run build -w @netnavr/shell-codex-client && npm run build -w @netnavr/shell-provider-probe",
     "precheck": "npm run build:packages && npm run build -w @netnavr/shell-server",
-    "check": "npm run check -w @netnavr/shell-protocol && npm run check -w @netnavr/shell-model-router && npm run check -w @netnavr/shell-codex-client && npm run check -w @netnavr/shell-server && npm run check -w @netnavr/shell-web && npm run check -w @netnavr/shell-desktop",
+    "check": "npm run check -w @netnavr/shell-protocol && npm run check -w @netnavr/shell-model-router && npm run check -w @netnavr/shell-codex-client && npm run check -w @netnavr/shell-server && npm run check -w @netnavr/shell-web && npm run check -w @netnavr/shell-desktop && npm run check -w @netnavr/shell-provider-probe",
     "dev": "npm run build:packages && node scripts/dev.mjs",
     "dev:mac": "npm run build && npm run start -w @netnavr/shell-desktop",
     "package:mac": "npm run build && electron-builder --mac dir",
@@ -23,8 +23,12 @@
     "dev:web": "npm run dev -w @netnavr/shell-web",
     "start:mac": "npm run build && npm run start -w @netnavr/shell-desktop",
     "pretest": "npm run build:packages",
-    "test": "npm run test -w @netnavr/shell-server && npm run test -w @netnavr/shell-web && npm run test -w @netnavr/shell-desktop",
-    "test:integration": "node --test test/core-integration.test.ts",
+    "test": "npm run test -w @netnavr/shell-server && npm run test -w @netnavr/shell-web && npm run test -w @netnavr/shell-desktop && npm run test:provider",
+    "test:provider": "node --test packages/provider-probe/test/*.test.mjs",
+    "provider:status": "node scripts/provider-probe.mjs status",
+    "candidate:prepare": "node scripts/prepare-candidate.mjs",
+    "test:integration": "node --import=tsx --test test/*.test.ts",
+    "test:electron-runtime": "npm run build -w @netnavr/shell-desktop && node scripts/verify-electron-runtime.mjs",
     "verify": "npm test && npm run check && npm run build && npm run test:integration"
   },
   "dependencies": {
@@ -32,7 +36,7 @@
     "@openai/codex-sdk": "^0.146.0"
   },
   "devDependencies": {
-    "@netnavr/core": "git+https://github.com/PM100Fun/netnavr-core.git#b45f796b9f01b85cd5d779b8510e5ea8c8889f15",
+    "@netnavr/core": "git+https://github.com/PM100Fun/netnavr-core.git#c1c33130e5a5a6f807af094bc24a799dbde38d03",
     "concurrently": "^10.0.4",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.1",
@@ -40,7 +44,7 @@
   },
   "engines": { "node": ">=24" },
   "allowScripts": {
-    "git+https://github.com/PM100Fun/netnavr-core.git#b45f796b9f01b85cd5d779b8510e5ea8c8889f15": true,
+    "git+https://github.com/PM100Fun/netnavr-core.git#c1c33130e5a5a6f807af094bc24a799dbde38d03": true,
     "electron": true,
     "electron-winstaller": true,
     "esbuild": true,

@@ -1,42 +1,10 @@
-import { randomBytes } from "node:crypto";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { spawn } from "node:child_process";
 
-import concurrently from "concurrently";
-
-const shellRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const sessionToken = randomBytes(32).toString("base64url");
-const port = process.env.PORT?.trim() || "8787";
-const webSocketUrl = process.env.VITE_NETNAVR_SHELL_WS?.trim() || `ws://127.0.0.1:${port}/ws`;
-
-const { result } = concurrently(
-  [
-    {
-      name: "server",
-      command: "npm run dev -w @netnavr/shell-server",
-      env: {
-        NETNAVR_SHELL_SESSION_TOKEN: sessionToken
-      }
-    },
-    {
-      name: "web",
-      command: "npm run dev -w @netnavr/shell-web",
-      env: {
-        VITE_NETNAVR_SHELL_TOKEN: sessionToken,
-        VITE_NETNAVR_SHELL_WS: webSocketUrl
-      }
-    }
-  ],
-  {
-    cwd: shellRoot,
-    prefix: "name",
-    prefixColors: ["cyan", "magenta"],
-    killOthersOn: ["failure", "success"]
-  }
-);
-
-try {
-  await result;
-} catch {
-  process.exitCode = 1;
-}
+// Browser-only product 0.1 review. Do not silently enable the retained coding
+// server, inherited provider configuration or renderer credentials.
+if (!process.env.npm_execpath) throw new Error("Start the review using npm run dev");
+const child = spawn(process.execPath, [process.env.npm_execpath, "run", "dev", "-w", "@netnavr/shell-web"], {
+  stdio: "inherit", windowsHide: true,
+});
+child.on("exit", (code) => { process.exitCode = code ?? 1; });
+child.on("error", () => { console.error("Browser review could not start"); process.exitCode = 1; });
