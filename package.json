@@ -1,0 +1,51 @@
+{
+  "name": "netnavr-shell",
+  "version": "0.1.2",
+  "description": "A macOS-first interaction shell for the NetNavr local runtime.",
+  "author": "The NetNavr Authors",
+  "private": true,
+  "type": "module",
+  "main": "apps/desktop/dist/main.js",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build:packages && npm run build -w @netnavr/shell-server && npm run build -w @netnavr/shell-web && npm run build -w @netnavr/shell-desktop",
+    "build:packages": "npm run build -w @netnavr/shell-protocol && npm run build -w @netnavr/shell-model-router && npm run build -w @netnavr/shell-codex-client",
+    "precheck": "npm run build:packages && npm run build -w @netnavr/shell-server",
+    "check": "npm run check -w @netnavr/shell-protocol && npm run check -w @netnavr/shell-model-router && npm run check -w @netnavr/shell-codex-client && npm run check -w @netnavr/shell-server && npm run check -w @netnavr/shell-web && npm run check -w @netnavr/shell-desktop",
+    "dev": "npm run build:packages && node scripts/dev.mjs",
+    "dev:mac": "npm run build && npm run start -w @netnavr/shell-desktop",
+    "package:mac": "npm run build && electron-builder --mac dir",
+    "dist:mac": "npm run build && electron-builder --mac dmg",
+    "dev:server": "npm run build:packages && npm run dev -w @netnavr/shell-server",
+    "dev:web": "npm run dev -w @netnavr/shell-web",
+    "start:mac": "npm run build && npm run start -w @netnavr/shell-desktop",
+    "pretest": "npm run build:packages",
+    "test": "npm run test -w @netnavr/shell-server && npm run test -w @netnavr/shell-web && npm run test -w @netnavr/shell-desktop",
+    "test:integration": "node --test test/core-integration.test.ts",
+    "verify": "npm test && npm run check && npm run build && npm run test:integration"
+  },
+  "dependencies": {
+    "@openai/codex": "^0.146.0",
+    "@openai/codex-sdk": "^0.146.0"
+  },
+  "devDependencies": {
+    "@netnavr/core": "git+https://github.com/PM100Fun/netnavr-core.git#b45f796b9f01b85cd5d779b8510e5ea8c8889f15",
+    "concurrently": "^10.0.4",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.1",
+    "typescript": "^7.0.2"
+  },
+  "engines": { "node": ">=24" },
+  "allowScripts": {
+    "git+https://github.com/PM100Fun/netnavr-core.git#b45f796b9f01b85cd5d779b8510e5ea8c8889f15": true,
+    "electron": true,
+    "electron-winstaller": true,
+    "esbuild": true,
+    "fsevents": true
+  },
+  "license": "Apache-2.0",
+  "repository": "github:PM100Fun/netnavr-shell"
+}

@@ -1,0 +1,31 @@
+appId: com.netnavr.shell
+productName: NetNavr Shell
+artifactName: ${productName}-${version}-${arch}.${ext}
+directories:
+  output: release
+  buildResources: build
+files:
+  - package.json
+  - apps/desktop/dist/**/*
+  - apps/web/dist/**/*
+  - node_modules/@openai/**/*
+  - node_modules/@modelcontextprotocol/**/*
+asar: true
+asarUnpack:
+  - node_modules/@openai/codex-*/vendor/**/*
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dir
+    - target: dmg
+  minimumSystemVersion: "13.0"
+  extendInfo:
+    LSMinimumSystemVersion: "13.0"
+    NSHighResolutionCapable: true
+    NSRequiresAquaSystemAppearance: false
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  identity: null
+dmg:
+  sign: false
+  writeUpdateInfo: false
