@@ -61,7 +61,7 @@ authorized App distribution; Core does not publish installers.
 
 | Identity | Value |
 | --- | --- |
-| Product / internal App target | 0.1 / 0.1.0-alpha.1 |
+| Product / internal App target | 0.1 / 0.1.0-alpha.2 |
 | Shell component | 0.1.3 |
 | Core component fixed by the pin | 0.2.3 |
 | Core commit | `c1c33130e5a5a6f807af094bc24a799dbde38d03` |

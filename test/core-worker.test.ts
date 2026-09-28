@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
-import { fork } from "node:child_process";
+import { execFile, fork } from "node:child_process";
 import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomBytes, randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import test from "node:test";
 import { CORE_VERSION } from "@netnavr/core";
 import { FixtureClient } from "../apps/desktop/src/fixture-bridge.ts";
-import { launchOwnedCoreChild } from "../apps/desktop/src/owned-core-launcher.ts";
 
 test("bundled Core worker retains its Core version and isolated fixture across restart", async () => {
   const directory = await realpath(await mkdtemp(join(tmpdir(), "netnavr-worker-test-")));
@@ -49,18 +50,23 @@ test("bundled Core worker retains its Core version and isolated fixture across r
 });
 
 test("real fork cancellation waits for its owned worker to exit before rejection", async () => {
-  const directory = await realpath(await mkdtemp(join(tmpdir(), "netnavr-worker-cancel-")));
-  const child = fork(new URL("../apps/desktop/dist/core-worker.cjs", import.meta.url), [], { execArgv: [], stdio: ["ignore", "ignore", "ignore", "ipc"] });
-  const controller = new AbortController();
-  try {
-    const starting = launchOwnedCoreChild({
-      onSpawn: (callback) => { child.once("spawn", callback); }, onMessage: (callback) => { child.on("message", callback); },
-      onExit: (callback) => { child.once("exit", callback); }, postMessage: (value) => { child.send(value as object); }, kill: () => { child.kill(); },
-    }, randomBytes(32).toString("base64url"), join(directory, "fixture-v1"), controller.signal);
-    controller.abort();
-    await assert.rejects(starting);
-    assert.ok(child.exitCode !== null || child.signalCode !== null, "launch cannot lose a still-running child on rejection");
-  } finally { if (child.exitCode === null && child.signalCode === null) child.kill(); await rm(directory, { recursive: true, force: true }); }
+  // CI observed a Node 24.19 native callback-scope abort on Linux/macOS during
+  // this immediate fork/kill sequence inside node:test. Keep the lifecycle in an
+  // ordinary Node process; any native abort or missing exit still fails here.
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+  const { stdout, stderr } = await promisify(execFile)(process.execPath, [
+    "--import=tsx", fileURLToPath(new URL("./harness/real-core-cancellation.mjs", import.meta.url)),
+  ], { env, timeout: 12000, maxBuffer: 64 * 1024, encoding: "utf8" });
+  assert.equal(stderr, "");
+  const result = JSON.parse(stdout);
+  assert.equal(result.scenario, "real-core-startup-cancellation");
+  assert.equal(result.workerCreated, true);
+  assert.equal(result.abortBeforeReady, true);
+  assert.equal(result.actualExitBeforeRejection, true);
+  assert.equal(result.rejectedAfterConfirmedExit, true);
+  assert.equal(result.workerClosed, true);
+  assert.ok(result.workerExitCode === 0 || result.workerExitSignal === "SIGTERM");
 });
 
 async function launch(dataDirectory: string) {
