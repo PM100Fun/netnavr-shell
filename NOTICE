@@ -9,4 +9,41 @@ the source repository and is not imported into this repository.
 
 The original NetNavr source uses OpenAI Codex and its SDK as dependencies.
 Their licenses and notices remain with those dependency distributions.
-No upstream reference repository is copied into this source repository.
+Product 0.1 desktop assembly adapts selected MIT-licensed T3 Code source:
+https://github.com/pingdotgg/t3code
+commit de251fc2971a884cb5b1305ba4daf309dc8cccb0
+
+Upstream source identities (SHA-256 of Git blob bytes):
+apps/desktop/src/window/DesktopWindow.ts
+81721fec080912aae5b2027fb01002cb45bad81c31ffa4c0e6fda215eb91dd13
+apps/desktop/vite.config.ts
+29d05f8ee5f001c593b111853425d5c4eca2fb0e85462f5f13efad4e3b86d115
+scripts/lib/desktop-external-packages.ts
+c71e21a67ce382e04d90e7d7977dd1062b3cc499f46f62721ccff18f99b298cf
+
+The adaptation keeps platform titlebars, hidden first paint and first reveal,
+safe window parameters, CJS desktop assembly and common runtime external policy.
+Effect services, IDE databases, webviews, cloud/remote services, telemetry and
+update servers are excluded. NetNavr's Core remains the data/contract authority.
+
+MIT License
+
+Copyright (c) 2026 T3 Tools Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

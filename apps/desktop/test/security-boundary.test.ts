@@ -22,6 +22,9 @@ const webIndexSource = readFileSync(
   new URL("../../web/index.html", import.meta.url),
   "utf8",
 );
+const workerSource = readFileSync(new URL("../src/core-worker.ts", import.meta.url), "utf8");
+const windowSource = readFileSync(new URL("../src/window/DesktopWindow.ts", import.meta.url), "utf8");
+const engineeringSource = readFileSync(new URL("../../web/src/EngineeringApp.tsx", import.meta.url), "utf8");
 
 test("desktop connection credentials stay out of renderer URLs", () => {
   assert.doesNotMatch(desktopMainSource, /URLSearchParams/);
@@ -29,10 +32,11 @@ test("desktop connection credentials stay out of renderer URLs", () => {
   assert.doesNotMatch(webAppSource, /window\.location\.hash/);
   assert.match(desktopMainSource, /preload:/);
   assert.match(desktopMainSource, /event\.senderFrame\?\.url === rendererUrl/);
+  assert.match(desktopMainSource, /event\.senderFrame === mainWindow\.webContents\.mainFrame/);
 });
 
 test("desktop uses an OS-assigned loopback port", () => {
-  assert.match(desktopMainSource, /port:\s*0/);
+  assert.match(workerSource, /port:\s*0/);
   assert.doesNotMatch(desktopMainSource, /port:\s*8787/);
 });
 
@@ -84,13 +88,21 @@ test("external navigation accepts credential-free HTTPS URLs only", () => {
 });
 
 test("Core status stays behind the trusted preload bridge", () => {
-  assert.match(desktopMainSource, /fetchConfiguredCoreStatus/);
+  assert.match(desktopMainSource, /FixtureOwner/);
   assert.match(desktopMainSource, /isTrustedRenderer\(event\)/);
   assert.match(preloadSource, /getCoreStatus/);
   assert.match(preloadSource, /parseCoreStatusResult/);
   assert.match(webAppSource, /window\.netnavr\.getCoreStatus/);
   assert.doesNotMatch(webAppSource, /127\.0\.0\.1:8786/);
   assert.doesNotMatch(webAppSource, /\/v1\/(?:health|node)/);
+});
+
+test("product 0.1 does not auto-enable legacy programming providers or expose Core credentials", () => {
+  assert.doesNotMatch(desktopMainSource, /startAgentServer|NETNAVR_SHELL_WORKSPACE|NETNAVR_CORE_PORT/);
+  assert.match(windowSource, /sandbox:\s*true/);
+  assert.match(windowSource, /webviewTag:\s*false/);
+  assert.match(preloadSource, /parseFixtureInput/);
+  assert.doesNotMatch(engineeringSource, /fetch\(|Authorization|sessionToken|\/v1\/fixture|ipcRenderer|dataDirectory/);
 });
 
 test("renderer targets cancellation and ignores stale run events", () => {

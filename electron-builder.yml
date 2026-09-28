@@ -1,6 +1,8 @@
 appId: com.netnavr.shell
-productName: NetNavr Shell
+productName: NetNavr Engineering
 artifactName: ${productName}-${version}-${arch}.${ext}
+extraMetadata:
+  version: 0.1.0-alpha.2
 directories:
   output: release
   buildResources: build
@@ -8,19 +10,21 @@ files:
   - package.json
   - apps/desktop/dist/**/*
   - apps/web/dist/**/*
-  - node_modules/@openai/**/*
-  - node_modules/@modelcontextprotocol/**/*
+  - NOTICE
+  - LICENSE
+  - "!node_modules/**/*"
+  - "!apps/desktop/dist/runtime-check.cjs"
+  - "!apps/desktop/dist/runtime-check.cjs.map"
 asar: true
+# The utility process entry must be a real filesystem file for Electron fork.
 asarUnpack:
-  - node_modules/@openai/codex-*/vendor/**/*
+  - apps/desktop/dist/core-worker.cjs
 mac:
   category: public.app-category.developer-tools
   target:
     - target: dir
     - target: dmg
-  minimumSystemVersion: "13.0"
   extendInfo:
-    LSMinimumSystemVersion: "13.0"
     NSHighResolutionCapable: true
     NSRequiresAquaSystemAppearance: false
   hardenedRuntime: false
