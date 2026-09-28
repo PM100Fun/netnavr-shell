@@ -1,5 +1,11 @@
 // Modified for the repository split: consume Core's pinned wire contract.
-import { CORE_SERVICE, CORE_API_VERSION, CORE_SCHEMA_VERSION } from "@netnavr/core/contract";
+import {
+  CORE_SERVICE,
+  CORE_API_VERSION,
+  CORE_SCHEMA_VERSION,
+  type CoreHealth,
+  type CoreNodeIdentity,
+} from "@netnavr/core/contract";
 
 export const CORE_STATUS_CHANNEL = "netnavr:core-status";
 export const DEFAULT_CORE_ORIGIN = "http://127.0.0.1:8786";
@@ -11,16 +17,8 @@ const NODE_ID_PATTERN =
 const REQUEST_ID_PATTERN =
   /^req_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-export type CoreStatusOnline = {
+export type CoreStatusOnline = Readonly<CoreHealth & CoreNodeIdentity> & {
   readonly state: "online";
-  readonly service: typeof CORE_SERVICE;
-  readonly status: "ok";
-  readonly apiVersion: typeof CORE_API_VERSION;
-  readonly version: string;
-  readonly uptimeSeconds: number;
-  readonly nodeId: string;
-  readonly createdAt: string;
-  readonly schemaVersion: typeof CORE_SCHEMA_VERSION;
   readonly requestIds: {
     readonly health?: string;
     readonly node?: string;
@@ -376,13 +374,7 @@ function normalizeCoreOrigin(value: string): string {
   return `http://127.0.0.1:${port}`;
 }
 
-function isCoreHealth(value: unknown): value is {
-  service: typeof CORE_SERVICE;
-  status: "ok";
-  apiVersion: typeof CORE_API_VERSION;
-  version: string;
-  uptimeSeconds: number;
-} {
+function isCoreHealth(value: unknown): value is CoreHealth {
   return (
     isRecord(value) &&
     value.service === CORE_SERVICE &&
@@ -394,11 +386,7 @@ function isCoreHealth(value: unknown): value is {
   );
 }
 
-function isCoreNode(value: unknown): value is {
-  nodeId: string;
-  createdAt: string;
-  schemaVersion: typeof CORE_SCHEMA_VERSION;
-} {
+function isCoreNode(value: unknown): value is CoreNodeIdentity {
   return (
     isRecord(value) &&
     typeof value.nodeId === "string" &&
