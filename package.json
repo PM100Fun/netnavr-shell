@@ -1,6 +1,6 @@
 {
   "name": "netnavr-shell",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "A macOS-first interaction shell for the NetNavr local runtime.",
   "author": "The NetNavr Authors",
   "private": true,
