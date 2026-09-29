@@ -1,14 +1,16 @@
 {
   "name": "@netnavr/shell-provider-probe",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "exports": "./src/index.mjs",
   "scripts": {
-    "build": "node --check src/index.mjs",
-    "check": "node --check src/index.mjs",
+    "build": "node --check src/index.mjs && node --check src/app-server.mjs && node --check src/codex-policy.mjs && node --check src/codex-synthetic.mjs && node --check src/official-tunnel.mjs",
+    "check": "node --check src/index.mjs && node --check src/app-server.mjs && node --check src/codex-policy.mjs && node --check src/codex-synthetic.mjs && node --check src/official-tunnel.mjs",
     "test": "node --test test/*.test.mjs"
   },
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "license": "Apache-2.0"
 }

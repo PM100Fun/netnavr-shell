@@ -24,6 +24,11 @@ import { FixtureOwner } from "./fixture-owner.js";
 import { createElectronCoreLauncher } from "./electron-core-launcher.js";
 import { FIXTURE_CHANNELS, parseFixtureInput, parseFixtureCommandId } from "./fixture-bridge.js";
 
+import { CodexSyntheticProvider } from "../../../packages/provider-probe/src/codex-synthetic.mjs";
+import { ProviderOwner } from "./provider-owner.js";
+import { PROVIDER_CHANNELS, parseProviderMarker } from "./provider-bridge.js";
+import { bridgeFailure } from "./fixture-bridge.js";
+
 const desktopDirectory = __dirname;
 const rendererPath = path.resolve(desktopDirectory, "../../web/dist/index.html");
 const rendererUrl = pathToFileURL(rendererPath).href;
@@ -36,6 +41,11 @@ const fixtureOwner = new FixtureOwner(createElectronCoreLauncher(
     : path.join(desktopDirectory, "core-worker.cjs"),
   () => path.join(app.getPath("userData"), "product-0.1-engineering", "fixture-v1"),
 ));
+
+// Explicit trusted launch configuration; never accept these paths over IPC.
+const providerOptions = { executable: process.env.NETNAVR_SYNTHETIC_CODEX, dedicatedHome: process.env.NETNAVR_SYNTHETIC_HOME, evidenceRoot: process.env.NETNAVR_SYNTHETIC_EVIDENCE };
+const providerOwner = new ProviderOwner(providerOptions.executable && providerOptions.dedicatedHome && providerOptions.evidenceRoot
+  ? new CodexSyntheticProvider(providerOptions as { executable: string; dedicatedHome: string; evidenceRoot: string }) : undefined, fixtureOwner);
 
 async function createWindow() {
   mainWindow = new BrowserWindow(createDesktopWindowOptions({
@@ -89,15 +99,25 @@ function installDesktopBridges() {
 
     return { state: "offline", code: "unreachable", message: "Use the explicit product 0.1 engineering Core controls" };
   });
+  for (const [action, channel] of Object.entries(PROVIDER_CHANNELS)) {
+    ipcMain.handle(channel, async (event, input: unknown) => {
+      if (!isTrustedRenderer(event)) throw new Error("Provider bridge is unavailable");
+      if (action !== "run" && input !== undefined) throw new TypeError("Operation takes no arguments");
+      if (action === "run") return providerOwner.run(parseProviderMarker(input));
+      if (action === "preflight") return providerOwner.preflight();
+      if (action === "cancel") return providerOwner.cancel();
+      return providerOwner.status();
+    });
+  }
   for (const [action, channel] of Object.entries(FIXTURE_CHANNELS)) {
     ipcMain.handle(channel, async (event, input: unknown) => {
       if (!isTrustedRenderer(event)) throw new Error("Engineering bridge is unavailable");
       if (["start", "stop", "state"].includes(action) && input !== undefined) throw new TypeError("Engineering operation takes no arguments");
       switch (action) {
-        case "start": return fixtureOwner.start();
-        case "stop": return fixtureOwner.stop();
+        case "start": return providerOwner.busy ? bridgeFailure("provider_busy", "Wait for the provider operation") : fixtureOwner.start();
+        case "stop": return await providerOwner.stop() ? fixtureOwner.stop() : bridgeFailure("provider_cleanup_unconfirmed", "Provider shutdown was not confirmed");
         case "state": return fixtureOwner.state();
-        case "submit": return fixtureOwner.submit(parseFixtureInput(input));
+        case "submit": return providerOwner.busy ? bridgeFailure("provider_busy", "Wait for the provider operation") : fixtureOwner.submit(parseFixtureInput(input));
         case "read": return fixtureOwner.read(parseFixtureCommandId(input));
         case "cancel": return fixtureOwner.cancel(parseFixtureCommandId(input));
         default: throw new Error("Unknown engineering operation");
@@ -187,10 +207,18 @@ app.on("activate", () => {
   }
 });
 
+// Electron quits by default when the last window closes unless this event
+// has a listener. On macOS the owned Core belongs to the App session, so keep
+// it alive until the user quits and let activate recreate the window.
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
+});
+
 app.on("before-quit", async (event) => {
   if (quitting) return;
   event.preventDefault();
   quitting = true;
+  if (!await providerOwner.stop()) { quitting = false; console.error("Owned provider shutdown was not confirmed"); return; }
   const result = await fixtureOwner.stop();
   if (!result.ok) {
     quitting = false;

@@ -16,12 +16,20 @@ export class FixtureOwner {
   private handle?: OwnedCore;
   private client?: FixtureClient;
   private generation = 0;
+  private pendingCommands = new Set<string>();
   private startup?: Promise<FixtureBridgeResult<FixtureReadout>>;
   private shutdown?: Promise<FixtureBridgeResult<FixtureReadout>>;
   private controller?: AbortController;
 
   constructor(private readonly launch: LaunchOwnedCore) {}
 
+  binding(): { generation: number; signal: AbortSignal } | undefined {
+    return this.client && this.controller && this.pendingCommands.size === 0 ? { generation: this.generation, signal: this.controller.signal } : undefined;
+  }
+  submitBound(input: FixtureCommandInput, binding: { generation: number; signal: AbortSignal }) {
+    return binding.generation === this.generation && binding.signal === this.controller?.signal && !binding.signal.aborted
+      ? this.submit(input) : Promise.resolve(bridgeFailure("stale_session", "Core changed during provider execution"));
+  }
   start(): Promise<FixtureBridgeResult<FixtureReadout>> {
     if (this.shutdown) return Promise.resolve(bridgeFailure("stopping", "Wait until the engineering Core has stopped"));
     if (this.startup) return this.startup;
@@ -92,17 +100,27 @@ export class FixtureOwner {
     return response.ok ? { ok: true, value: { state: this.lifecycle, fixture: response.value } } : response;
   }
   submit(input: FixtureCommandInput): Promise<FixtureBridgeResult<FixtureCommandResult>> {
-    return this.client ? this.client.submit(input, this.controller?.signal) : Promise.resolve(bridgeFailure("not_started", "Start the engineering Core explicitly first"));
+    if (!this.client) return Promise.resolve(bridgeFailure("not_started", "Start the engineering Core explicitly first"));
+    if (this.pendingCommands.size >= 128 && !this.pendingCommands.has(input.commandId)) return Promise.resolve(bridgeFailure("pending_limit", "Read or stop pending engineering commands first"));
+    const generation = this.generation;
+    this.pendingCommands.add(input.commandId);
+    return this.client.submit(input, this.controller?.signal).then((result) => {
+      if (generation === this.generation && result.ok && result.value.status !== "pending") this.pendingCommands.delete(input.commandId);
+      return result;
+    });
   }
   read(commandId: string): Promise<FixtureBridgeResult<FixtureCommandResult>> {
-    return this.client ? this.client.read(commandId, this.controller?.signal) : Promise.resolve(bridgeFailure("not_started", "The engineering Core is not running"));
+    const generation = this.generation;
+    return this.client ? this.client.read(commandId, this.controller?.signal).then((result) => { if (generation === this.generation && result.ok && result.value.status !== "pending") this.pendingCommands.delete(commandId); return result; }) : Promise.resolve(bridgeFailure("not_started", "The engineering Core is not running"));
   }
   cancel(commandId: string): Promise<FixtureBridgeResult<FixtureCommandResult>> {
-    return this.client ? this.client.cancel(commandId, this.controller?.signal) : Promise.resolve(bridgeFailure("not_started", "The engineering Core is not running"));
+    const generation = this.generation;
+    return this.client ? this.client.cancel(commandId, this.controller?.signal).then((result) => { if (generation === this.generation && result.ok && result.value.status !== "pending") this.pendingCommands.delete(commandId); return result; }) : Promise.resolve(bridgeFailure("not_started", "The engineering Core is not running"));
   }
   stop(): Promise<FixtureBridgeResult<FixtureReadout>> {
     if (this.shutdown) return this.shutdown;
     ++this.generation;
+    this.pendingCommands.clear();
     this.lifecycle = "stopping";
     this.controller?.abort();
     const handle = this.handle;
