@@ -1,6 +1,6 @@
 {
   "name": "netnavr-shell",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "A macOS-first interaction shell for the NetNavr local runtime.",
   "author": "The NetNavr Authors",
   "private": true,
@@ -30,7 +30,8 @@
     "test:integration": "node --import=tsx --test test/*.test.ts",
     "test:electron-runtime": "npm run build -w @netnavr/shell-desktop && node scripts/verify-electron-runtime.mjs",
     "verify": "npm test && npm run check && npm run build && npm run test:integration",
-    "provider:synthetic": "node scripts/provider-synthetic.mjs"
+    "provider:synthetic": "node scripts/provider-synthetic.mjs",
+    "icon:mac": "node scripts/build-mac-icon.mjs"
   },
   "dependencies": {
     "@openai/codex": "^0.146.0",

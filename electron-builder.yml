@@ -2,7 +2,7 @@ appId: com.netnavr.shell
 productName: NetNavr Engineering
 artifactName: ${productName}-${version}-${arch}.${ext}
 extraMetadata:
-  version: 0.1.0-alpha.5
+  version: 0.1.0-alpha.6
 directories:
   output: release
   buildResources: build
@@ -20,10 +20,13 @@ asar: true
 asarUnpack:
   - apps/desktop/dist/core-worker.cjs
 mac:
+  icon: assets/icons/netnavr.icns
   category: public.app-category.developer-tools
   target:
     - target: dir
+      arch: [x64]
     - target: dmg
+      arch: [x64]
   extendInfo:
     NSHighResolutionCapable: true
     NSRequiresAquaSystemAppearance: false

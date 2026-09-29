@@ -1,6 +1,12 @@
 # NetNavr Shell
 
 A macOS-first desktop interaction shell for NetNavr, using Electron and React.
+
+Product 0.1 targets internal testing on Intel macOS 14.8.8. Apple Silicon
+validation is deferred; it is not a verified platform for this candidate.
+The internal App uses the maintainer-selected image in `assets/icons`;
+`npm run icon:mac` regenerates its ICNS using macOS system tools.
+
 Product 0.1 is an engineering candidate and a review of four product flows; it
 does not yet provide the complete Navigator, Tasks, Memory or recovery product.
 
@@ -76,8 +82,8 @@ authorized App distribution; Core does not publish installers.
 
 | Identity | Value |
 | --- | --- |
-| Product / internal App target | 0.1 / 0.1.0-alpha.5 |
-| Shell component | 0.1.6 |
+| Product / internal App target | 0.1 / 0.1.0-alpha.6 |
+| Shell component | 0.1.7 |
 | Core component fixed by the pin | 0.2.3 |
 | Core commit | `c1c33130e5a5a6f807af094bc24a799dbde38d03` |
 | Core HTTP API / data schema | v1 / 1 |
